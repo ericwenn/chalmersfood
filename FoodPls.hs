@@ -36,7 +36,7 @@ printLunches :: [Lunch] -> [Chunk String]
 printLunches []     = []
 printLunches (l:ls) = printLunch l ++ printLunches ls
 
-printLunch (name, Just menu) = concat ([bold (chunk (name ++ "\n") & fore magenta)]:[[r | r<-printRecipeCategory rc] | rc<-recipeCategories menu, printRecipeCategory rc /= []])  ++ [chunk "\n"]
+printLunch (name, Just menu) = concat ([underline (bold (chunk (name ++ "\n")) & fore blue)]:[[r | r<-printRecipeCategory rc] | rc<-recipeCategories menu, printRecipeCategory rc /= []])  ++ [chunk "\n"]
 
 printRecipeCategory :: RecipeCategory -> [Chunk String]
 printRecipeCategory rc = concat [[bold (chunk (name rc ++ ": ")), chunk (printRecipe recipe)] | recipe<-recipes rc, printRecipe recipe /= ""]
@@ -74,16 +74,6 @@ data LunchMenu = LunchMenu {
 } deriving (Generic, Show)
 
 instance FromJSON LunchMenu
-
-
-myChunks :: [Chunk String]
-myChunks = [ chunk "Roses" & fore red, chunk "\n",
-             chunk "Violets" & fore blue, chunk "\n" ]
-
-myPrintedChunks :: IO ()
-myPrintedChunks = mapM_ BS.putStr
-               . chunksToByteStrings toByteStringsColors256
-               $ myChunks
 
 
 main = lunches
