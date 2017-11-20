@@ -7,7 +7,7 @@ import           GHC.Generics
 import           Network.HTTP
 import           Prelude                    hiding (putStr)
 import           Rainbow
-import           System.IO
+import           Test.QuickCheck
 -- http://carboncloudrestaurantapi.azurewebsites.net/api/menuscreen/getdataday?restaurantid=33
 
 getLunchUrl :: Integer -> String
@@ -29,7 +29,8 @@ getLunchFromId n i = do
 lunches = do
   let providers = [("Linsen", 33),("Kårrestaurangen", 5), ("L's kitchen", 8), ("Express", 7), ("L's Resto", 32), ("Kokboken", 35)]
   ls <- sequence [getLunchFromId n i | (n, i) <-providers]
-  mapM_ BS.putStr . chunksToByteStrings toByteStringsColors256 $ printLunches ls
+  printer <- byteStringMakerFromEnvironment
+  mapM_ BS.putStr . chunksToByteStrings printer $ printLunches ls
 
 
 printLunches :: [Lunch] -> [Chunk String]
