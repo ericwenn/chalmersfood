@@ -37,7 +37,9 @@ printLunches :: [Lunch] -> [Chunk String]
 printLunches []     = []
 printLunches (l:ls) = printLunch l ++ printLunches ls
 
+printLunch :: ([Char], Maybe LunchMenu) -> [Chunk [Char]]
 printLunch (name, Just menu) = concat ([underline (bold (chunk (name ++ "\n")) & fore blue)]:[[r | r<-printRecipeCategory rc] | rc<-recipeCategories menu, printRecipeCategory rc /= []])  ++ [chunk "\n"]
+printLunch (name, Nothing) = [underline (bold (chunk (name ++ "\n\n")) & fore blue)]
 
 printRecipeCategory :: RecipeCategory -> [Chunk String]
 printRecipeCategory rc = concat [[bold (chunk (name rc ++ ": ")), chunk (printRecipe recipe)] | recipe<-recipes rc, printRecipe recipe /= ""]
