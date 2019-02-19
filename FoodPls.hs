@@ -8,10 +8,20 @@ import           Network.HTTP
 import           Prelude                    hiding (putStr)
 import           Rainbow
 import           Test.QuickCheck
--- http://carboncloudrestaurantapi.azurewebsites.net/api/menuscreen/getdataday?restaurantid=33
 
-getLunchUrl :: Integer -> String
-getLunchUrl d = "http://carboncloudrestaurantapi.azurewebsites.net/api/menuscreen/getdataday?restaurantid=" ++ show d
+lunchIds = [
+  ("Linsen", "b672efaf-032a-4bb8-d2a5-08d558129279"),
+  ("Kårrestaurangen", "21f31565-5c2b-4b47-d2a1-08d558129279"),
+  ("Express", "3d519481-1667-4cad-d2a3-08d558129279"),
+  ("Hyllan", "a7f0f75b-c1cb-4fc3-d2a6-08d558129279"),
+  ("S.M.A.K", "3ac68e11-bcee-425e-d2a8-08d558129279"),
+  ("L's kitchen", "c74da2cf-aa1a-4d3a-9ba6-08d5569587a1"),
+  -- ("L's Resto", "c6742862-3cc5-47b1-d2a4-08d558129279"), -- Output gets quite long with these
+  -- ("L's Express", "871c63d7-4ddb-46b8-d2a0-08d558129279"),
+  ("Kokboken", "c74da2cf-aa1a-4d3a-9ba6-08d5569587a1")] :: [(String, String)]
+
+getLunchUrl :: String -> String
+getLunchUrl i = "http://carbonateapiprod.azurewebsites.net/api/v1/mealprovidingunits/" ++ i ++ "/dishoccurrences"
 
 
 getLunch :: String -> IO String
@@ -19,16 +29,15 @@ getLunch url = do
   rsp <- Network.HTTP.simpleHTTP (getRequest url)
   getResponseBody rsp
 
-getLunchFromId :: String -> Integer -> IO Lunch
+getLunchFromId :: String -> String -> IO Lunch
 getLunchFromId n i = do
   body <- getLunch (getLunchUrl i)
-  return (n, decode (pack body) :: Maybe LunchMenu)
+  return (n, decode (pack body) :: Maybe [Recipe])
 
 
 
 lunches = do
-  let providers = [("Linsen", 33),("Kårrestaurangen", 5), ("L's kitchen", 8), ("Express", 7), ("L's Resto", 32), ("Kokboken", 35)]
-  ls <- sequence [getLunchFromId n i | (n, i) <-providers]
+  ls <- sequence [getLunchFromId n i | (n, i) <- lunchIds]
   printer <- byteStringMakerFromEnvironment
   mapM_ BS.putStr . chunksToByteStrings printer $ printLunches ls
 
@@ -37,46 +46,35 @@ printLunches :: [Lunch] -> [Chunk String]
 printLunches []     = []
 printLunches (l:ls) = printLunch l ++ printLunches ls
 
-printLunch :: ([Char], Maybe LunchMenu) -> [Chunk [Char]]
-printLunch (name, Just menu) = concat ([underline (bold (chunk (name ++ "\n")) & fore blue)]:[[r | r<-printRecipeCategory rc] | rc<-recipeCategories menu, printRecipeCategory rc /= []])  ++ [chunk "\n"]
+printLunch :: ([Char], Maybe [Recipe]) -> [Chunk [Char]]
+printLunch (name, Just recepies) = concat ([underline (bold (chunk (name ++ "\n")) & fore blue)]:[printRecipe r | r <- recepies])  ++ [chunk "\n"]
 printLunch (name, Nothing) = [underline (bold (chunk (name ++ "\n\n")) & fore blue)]
 
-printRecipeCategory :: RecipeCategory -> [Chunk String]
-printRecipeCategory rc = concat [[bold (chunk (name rc ++ ": ")), chunk (printRecipe recipe)] | recipe<-recipes rc, printRecipe recipe /= ""]
-
-printRecipe :: Recipe -> String
-printRecipe r = printDisplayName (head (displayNames r))
+printRecipe :: Recipe -> [Chunk String]
+printRecipe rc = [bold (chunk (dishTypeName (dishType rc) ++ ": ")), chunk (printDisplayName (head (displayNames rc)))]
 
 printDisplayName :: DisplayName -> String
-printDisplayName d = (displayName d ++ "\n")
+printDisplayName d = (dishDisplayName d ++ "\n")
 
 
-type Lunch = (String, Maybe LunchMenu)
+type Lunch = (String, Maybe [Recipe])
 
 
 data DisplayName = DisplayName {
-  displayName :: String
+  dishDisplayName :: String
 } deriving (Show, Generic)
 instance FromJSON DisplayName
 
+data DishType = DishType {
+  dishTypeName :: String
+} deriving (Show, Generic)
+instance FromJSON DishType
+
 data Recipe = Recipe {
-  price        :: Int,
-  displayNames :: [DisplayName]
-} deriving (Show, Generic)
-instance FromJSON Recipe
-
-data RecipeCategory = RecipeCategory {
-  name    :: String,
-  recipes :: [Recipe]
-} deriving (Show, Generic)
-instance FromJSON RecipeCategory
-
-data LunchMenu = LunchMenu {
-  menuDate         :: String,
-  recipeCategories :: [RecipeCategory]
+  dishType      :: DishType,
+  displayNames  :: [DisplayName]
 } deriving (Generic, Show)
-
-instance FromJSON LunchMenu
+instance FromJSON Recipe
 
 
 main = lunches
